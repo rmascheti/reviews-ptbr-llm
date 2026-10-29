@@ -22,6 +22,8 @@ Treino completo: `notebooks/kaggle_train.ipynb` numa GPU T4 do Kaggle.
 - `src/prepare_data.py`: limpeza, rótulo derivado da nota, dedup, split 80/10/10 estratificado (seed 42)
 - `src/baseline.py`: baseline clássico
 - `src/train_lora.py`: fine-tuning LoRA + avaliação no test + push opcional para o HF Hub
+- `src/predict.py`: inferência com o adapter publicado em `rmascheti/qwen2.5-0.5b-reviews-ptbr`
+- `model_card.md`: fonte do README do modelo no Hugging Face (colar no editor do HF ao atualizar)
 - `reports/*.json`: métricas versionadas (fonte dos números do README)
 - `data/`, `outputs/`: não versionados
 

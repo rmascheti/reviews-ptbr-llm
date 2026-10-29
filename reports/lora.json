@@ -1,0 +1,12 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B + LoRA r=16",
+  "macro_f1": 0.7865,
+  "accuracy": 0.8781,
+  "train_size": 40001,
+  "effective_batch": 32,
+  "n_gpus": 2,
+  "peak_gpu_mem_gb": 8.3,
+  "ms_per_review": 29.914,
+  "device": "Tesla T4",
+  "n_test": 12689
+}

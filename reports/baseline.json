@@ -1,8 +1,8 @@
 {
   "model": "tfidf-logreg",
-  "macro_f1": 0.7531,
-  "accuracy": 0.8348,
-  "train_seconds": 32.3,
-  "ms_per_review_cpu": 0.0349,
+  "macro_f1": 0.7572,
+  "accuracy": 0.8365,
+  "train_seconds": 45.9,
+  "ms_per_review_cpu": 0.0499,
   "n_test": 12689
 }
