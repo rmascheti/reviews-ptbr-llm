@@ -40,7 +40,7 @@ Formato: contexto → decisão → consequência. Quando uma decisão mudar, adi
 
 ## T-007 · Hiperparâmetros de treino
 
-**Decisão:** lr 2e-4, cosine com 5% de warmup, batch 16 por GPU (32 efetivo nas 2 T4 do Kaggle), max_len 256, 1 época sobre 40k exemplos estratificados, eval a cada 500 passos e melhor checkpoint por macro-F1 na validação (2k exemplos).
+**Decisão:** lr 2e-4, cosine com 5% de warmup, batch 8 por GPU com gradient accumulation 2 (32 efetivo nas 2 T4 do Kaggle; ver T-011), max_len 256, 1 época sobre 40k exemplos estratificados, eval a cada 500 passos e melhor checkpoint por macro-F1 na validação (2k exemplos).
 **Consequência:** treino estimado em 1–2 h na T4 (a confirmar). Sem busca de hiperparâmetros e com seed única: limitação documentada.
 
 ## T-008 · Treino no Kaggle; smoke test local em CPU
@@ -60,3 +60,9 @@ Formato: contexto → decisão → consequência. Quando uma decisão mudar, adi
 **Contexto:** com os mesmos splits, o baseline deu macro-F1 0,7531 localmente (Python 3.14) e 0,7572 no Kaggle (Python 3.13), por diferenças de versão de bibliotecas.
 **Decisão:** os números oficiais do README vêm da mesma execução no Kaggle que treina o LoRA, e o ambiente fica registrado no log.
 **Consequência:** a diferença entre ambientes (~0,004) serve de referência: ganhos dessa ordem não são conclusivos.
+
+## T-011 · Batch 8 por GPU + gradient accumulation 2
+
+**Contexto:** com batch 16 por GPU e max_len 256, a GPU 0 estourou os 14,5 GB da T4 no passo 13 (um batch com reviews longos). No `DataParallel`, a GPU 0 ainda concentra trabalho extra.
+**Decisão:** batch 8 por GPU e `gradient_accumulation_steps=2`, mantendo o batch efetivo em 32 (8 × 2 GPUs × 2). `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` contra fragmentação. Opção `--max-steps N` para medir o pico de memória antes do treino longo; o pico vai para o relatório.
+**Consequência:** mesmo treino do ponto de vista da otimização, com cerca de metade do pico de memória de ativações; um pouco mais lento por passo.

@@ -5,17 +5,22 @@ para validar o pipeline em segundos.
 
 Uso:
   uv run --group train python src/train_lora.py --smoke            # teste rápido (CPU ok)
+  python src/train_lora.py --max-steps 30                 # testa a memória da GPU com o batch real
   python src/train_lora.py --train-size 40000 --push-to-hub USER/qwen2.5-0.5b-reviews-ptbr
 """
 import argparse
 import json
 import math
+import os
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import torch
+# reduz fragmentação de memória na GPU; precisa ser definido antes de o CUDA inicializar
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+import torch  # noqa: E402
 from datasets import Dataset
 from peft import LoraConfig, TaskType, get_peft_model
 from sklearn.metrics import classification_report, f1_score
@@ -48,17 +53,19 @@ def main() -> None:
     p.add_argument("--eval-size", type=int, default=2_000)
     p.add_argument("--epochs", type=float, default=1.0)
     p.add_argument("--lr", type=float, default=2e-4)
-    p.add_argument("--batch-size", type=int, default=16)
+    p.add_argument("--batch-size", type=int, default=8, help="por GPU; 16 estourou os 15 GB da T4")
+    p.add_argument("--grad-accum", type=int, default=2, help="acumula gradientes para manter o batch efetivo")
     p.add_argument("--max-len", type=int, default=256)
     p.add_argument("--lora-r", type=int, default=16)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out", default=str(ROOT / "outputs/qwen-lora"))
     p.add_argument("--push-to-hub", default=None, help="repo id no Hugging Face, ex.: usuario/modelo")
     p.add_argument("--smoke", action="store_true", help="roda com poucos exemplos para testar o pipeline")
+    p.add_argument("--max-steps", type=int, default=-1, help="para após N passos e mostra o pico de memória")
     args = p.parse_args()
 
     if args.smoke:
-        args.train_size, args.eval_size, args.epochs, args.batch_size = 64, 32, 0.25, 4
+        args.train_size, args.eval_size, args.epochs, args.batch_size, args.grad_accum = 64, 32, 0.25, 4, 1
 
     tok = AutoTokenizer.from_pretrained(args.model)
     tok.pad_token = tok.pad_token or tok.eos_token
@@ -89,9 +96,9 @@ def main() -> None:
     val = load_split("val", args.eval_size, args.seed).map(tokenize, batched=True, remove_columns=["text"])
 
     # warmup de 5% calculado aqui: transformers 4.x só aceita int em warmup_steps, e o 5.x removeu warmup_ratio
-    # com 2 GPUs (T4 x2 no Kaggle) o Trainer divide o batch entre elas: batch efetivo = batch_size × n_gpus
+    # com 2 GPUs (T4 x2 no Kaggle) o Trainer divide o batch entre elas: batch efetivo = batch_size × n_gpus × grad_accum
     n_gpus = max(1, torch.cuda.device_count())
-    effective_batch = args.batch_size * n_gpus
+    effective_batch = args.batch_size * n_gpus * args.grad_accum
     total_steps = math.ceil(len(train) / effective_batch) * args.epochs
     warmup_steps = max(1, int(0.05 * total_steps))
 
@@ -107,6 +114,8 @@ def main() -> None:
             num_train_epochs=args.epochs,
             learning_rate=args.lr,
             per_device_train_batch_size=args.batch_size,
+            gradient_accumulation_steps=args.grad_accum,
+            max_steps=args.max_steps,
             per_device_eval_batch_size=args.batch_size * 2,
             warmup_steps=warmup_steps,
             lr_scheduler_type="cosine",
@@ -128,6 +137,10 @@ def main() -> None:
         compute_metrics=metrics,
     )
     trainer.train()
+    peak_gb = max((torch.cuda.max_memory_allocated(i) for i in range(torch.cuda.device_count())), default=0) / 1024**3
+    print(f"pico de memória na GPU: {peak_gb:.1f} GB")
+    if args.max_steps > 0:
+        return  # teste de memória: não avalia nem publica
 
     # avaliação final no test completo (mesmo split do baseline)
     test_df = pd.read_parquet(ROOT / "data/test.parquet")
@@ -148,6 +161,7 @@ def main() -> None:
         "train_size": len(train),
         "effective_batch": effective_batch,
         "n_gpus": n_gpus,
+        "peak_gpu_mem_gb": round(peak_gb, 1),
         "ms_per_review": round(ms_per_review, 3),
         "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
         "n_test": len(test),
