@@ -29,7 +29,7 @@ uv run python src/baseline.py
 uv run --group train python src/train_lora.py --smoke   # valida o pipeline em CPU
 ```
 
-Treino completo: `notebooks/kaggle_train.ipynb` (GPU T4 do Kaggle).
+Treino completo: `notebooks/kaggle_train.ipynb` (GPU T4 do Kaggle). O adapter treinado será publicado em [huggingface.co/rmascheti/qwen2.5-0.5b-reviews-ptbr](https://huggingface.co/rmascheti/qwen2.5-0.5b-reviews-ptbr).
 
 ## Próximos passos
 
