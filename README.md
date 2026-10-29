@@ -23,8 +23,7 @@ O baseline já é forte nos extremos (F1 ≈ 0,89), mas erra muito no **neutro**
 
 ```bash
 uv sync
-curl -sL -o data/B2W-Reviews01.csv https://raw.githubusercontent.com/americanas-tech/b2w-reviews01/main/B2W-Reviews01.csv
-uv run python src/prepare_data.py
+uv run python src/prepare_data.py   # baixa o CSV se não existir
 uv run python src/baseline.py
 uv run --group train python src/train_lora.py --smoke   # valida o pipeline em CPU
 ```

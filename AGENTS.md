@@ -10,8 +10,7 @@ Classificação de sentimento (negativo / neutro / positivo) em reviews PT-BR do
 
 ```bash
 uv sync                                                    # deps base (pandas, sklearn)
-curl -sL -o data/B2W-Reviews01.csv https://raw.githubusercontent.com/americanas-tech/b2w-reviews01/main/B2W-Reviews01.csv
-uv run python src/prepare_data.py                          # gera data/{train,val,test}.parquet
+uv run python src/prepare_data.py                          # baixa o CSV e gera data/{train,val,test}.parquet
 uv run python src/baseline.py                              # → reports/baseline.json
 CUDA_VISIBLE_DEVICES="" uv run --group train python src/train_lora.py --smoke   # teste rápido em CPU
 ```
