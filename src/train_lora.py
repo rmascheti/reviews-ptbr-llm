@@ -9,6 +9,7 @@ Uso:
 """
 import argparse
 import json
+import math
 import time
 from pathlib import Path
 
@@ -67,8 +68,7 @@ def main() -> None:
         num_labels=len(LABELS),
         id2label=dict(enumerate(LABELS)),
         label2id=LABEL2ID,
-        dtype=torch.float32,  # pesos em fp32; o Trainer usa autocast fp16 na GPU
-    )
+    ).float()  # pesos em fp32; o Trainer usa autocast fp16 na GPU (sem kwarg de dtype: muda entre transformers 4.x e 5.x)
     model.config.pad_token_id = tok.pad_token_id
     model = get_peft_model(
         model,
@@ -88,6 +88,10 @@ def main() -> None:
     train = load_split("train", args.train_size, args.seed).map(tokenize, batched=True, remove_columns=["text"])
     val = load_split("val", args.eval_size, args.seed).map(tokenize, batched=True, remove_columns=["text"])
 
+    # warmup de 5% calculado aqui: transformers 4.x só aceita int em warmup_steps, e o 5.x removeu warmup_ratio
+    total_steps = math.ceil(len(train) / args.batch_size) * args.epochs
+    warmup_steps = max(1, int(0.05 * total_steps))
+
     def metrics(eval_pred):
         logits, labels = eval_pred
         pred = np.argmax(logits, axis=-1)
@@ -101,7 +105,7 @@ def main() -> None:
             learning_rate=args.lr,
             per_device_train_batch_size=args.batch_size,
             per_device_eval_batch_size=args.batch_size * 2,
-            warmup_steps=0.05,  # float = fração do total de passos
+            warmup_steps=warmup_steps,
             lr_scheduler_type="cosine",
             fp16=torch.cuda.is_available(),
             eval_strategy="steps",
