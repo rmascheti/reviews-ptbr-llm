@@ -89,7 +89,10 @@ def main() -> None:
     val = load_split("val", args.eval_size, args.seed).map(tokenize, batched=True, remove_columns=["text"])
 
     # warmup de 5% calculado aqui: transformers 4.x só aceita int em warmup_steps, e o 5.x removeu warmup_ratio
-    total_steps = math.ceil(len(train) / args.batch_size) * args.epochs
+    # com 2 GPUs (T4 x2 no Kaggle) o Trainer divide o batch entre elas: batch efetivo = batch_size × n_gpus
+    n_gpus = max(1, torch.cuda.device_count())
+    effective_batch = args.batch_size * n_gpus
+    total_steps = math.ceil(len(train) / effective_batch) * args.epochs
     warmup_steps = max(1, int(0.05 * total_steps))
 
     def metrics(eval_pred):
@@ -143,6 +146,8 @@ def main() -> None:
         "macro_f1": round(float(f1_score(out.label_ids, pred, average="macro")), 4),
         "accuracy": round(float((pred == out.label_ids).mean()), 4),
         "train_size": len(train),
+        "effective_batch": effective_batch,
+        "n_gpus": n_gpus,
         "ms_per_review": round(ms_per_review, 3),
         "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
         "n_test": len(test),

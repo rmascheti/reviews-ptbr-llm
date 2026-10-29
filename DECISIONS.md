@@ -40,7 +40,7 @@ Formato: contexto → decisão → consequência. Quando uma decisão mudar, adi
 
 ## T-007 · Hiperparâmetros de treino
 
-**Decisão:** lr 2e-4, cosine com 5% de warmup, batch 16, max_len 256, 1 época sobre 40k exemplos estratificados, eval a cada 500 passos e melhor checkpoint por macro-F1 na validação (2k exemplos).
+**Decisão:** lr 2e-4, cosine com 5% de warmup, batch 16 por GPU (32 efetivo nas 2 T4 do Kaggle), max_len 256, 1 época sobre 40k exemplos estratificados, eval a cada 500 passos e melhor checkpoint por macro-F1 na validação (2k exemplos).
 **Consequência:** treino estimado em 1–2 h na T4 (a confirmar). Sem busca de hiperparâmetros e com seed única: limitação documentada.
 
 ## T-008 · Treino no Kaggle; smoke test local em CPU
