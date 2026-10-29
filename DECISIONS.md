@@ -48,3 +48,15 @@ Formato: contexto → decisão → consequência. Quando uma decisão mudar, adi
 **Contexto:** a GTX 1060 (sm_61) não é suportada pelo PyTorch atual.
 **Decisão:** `--smoke` (64 exemplos) roda local com `CUDA_VISIBLE_DEVICES=""`; treino real no notebook Kaggle.
 **Consequência:** o notebook público no Kaggle também conta para o portfólio.
+
+## T-009 · Remover torchao no Kaggle
+
+**Contexto:** o Kaggle traz `torchao` 0.10.0. O `peft` 0.20 encontra o pacote instalado e exige versão ≥ 0.16, quebrando em `get_peft_model` mesmo sem quantização.
+**Decisão:** `pip uninstall -y torchao` na primeira célula do notebook.
+**Consequência:** nenhuma para o projeto (não usamos quantização). Se um dia usarmos, atualizar o `torchao` em vez de remover.
+
+## T-010 · Comparar modelos no mesmo ambiente
+
+**Contexto:** com os mesmos splits, o baseline deu macro-F1 0,7531 localmente (Python 3.14) e 0,7572 no Kaggle (Python 3.13), por diferenças de versão de bibliotecas.
+**Decisão:** os números oficiais do README vêm da mesma execução no Kaggle que treina o LoRA, e o ambiente fica registrado no log.
+**Consequência:** a diferença entre ambientes (~0,004) serve de referência: ganhos dessa ordem não são conclusivos.
